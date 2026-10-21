@@ -1,44 +1,57 @@
-
 import os
 import sys
 import time
 from google import genai
 
 def main():
-    if len(sys.argv) < 2:
-        print("Fehler: Bitte gib eine Frage in Anführungszeichen mit an!")
-        sys.exit(1)
-    
-    user_frage = sys.argv[1]
-
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         print("Fehler: Die Umgebungsvariable GEMINI_API_KEY wurde nicht gefunden!")
         sys.exit(1)
 
-    max_versuche = 3
-    for versuch in range(1, max_versuche + 1):
-        print(f"Verbinde mit der KI (Versuch {versuch}/{max_versuche})... Bitte warten...")
+    print("Initialisiere KI-Chat-Sitzung... Bitte warten...")
+    
+    try:
+        # 1. Client mit dem aktuellen Modell vorbereiten
+        client = genai.Client(api_key=api_key)
         
-        try:
-            client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(
-                model='gemini-3.8-flash',
-                contents=user_frage,
-            )
-            
-            print("\n=== KI-ASSISTENT ===")
-            print(response.text)
-            print("====================")
-            return
+        # 2. Eine fortlaufende Chat-Sitzung starten (das "Gedächtnis")
+        chat = client.chats.create(model="gemini-3.8-flash")
+        
+        print("\n==================================================")
+        print("🤖 KI-ASSISTENT MIT GEDÄCHTNIS INITIALISIERT")
+        print("Tippe 'exit', 'quit' oder 'beenden' zum Schließen.")
+        print("==================================================\n")
 
-        except Exception as e:
-            if versuch == max_versuche:
-                print(f"\nGoogle-Server dauerhaft überlastet: {e}")
-            else:
-                print("Server überlastet (503). Warte 4 Sekunden vor dem nächsten Versuch...\n")
-                time.sleep(4)
+        # 3. Die interaktive Chat-Schleife starten
+        while True:
+            try:
+                # Benutzereingabe live im Terminal abfragen
+                user_input = input("Du: ")
+                
+                # Abbruchbedingungen prüfen
+                if user_input.lower() in ['exit', 'quit', 'beenden']:
+                    print("\nChat beendet. Auf Wiedersehen!")
+                    break
+                    
+                if not user_input.strip():
+                    continue
+
+                # Nachricht an die bestehende Chat-Sitzung senden
+                response = chat.send_message(user_input)
+                
+                # Antwort ausgeben
+                print(f"\nKI: {response.text}\n")
+                print("-" * 30)
+
+            except Exception as e:
+                print(f"\nFehler bei der Übertragung: {e}")
+                print("Bitte versuche es gleich noch einmal.\n")
+                time.sleep(2)
+
+    except Exception as init_error:
+        print(f"Fehler bei der Chat-Initialisierung: {init_error}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
-
